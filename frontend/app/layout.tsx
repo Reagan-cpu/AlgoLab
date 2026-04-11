@@ -9,6 +9,10 @@ import './globals.css'
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
+const shouldLoadVercelAnalytics =
+  process.env.NODE_ENV === 'production' &&
+  process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true'
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: {
@@ -32,19 +36,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
+        url: '/algolab-icon.svg',
         type: 'image/svg+xml',
       },
     ],
-    apple: '/apple-icon.png',
+    shortcut: '/algolab-icon.svg',
+    apple: '/algolab-icon.svg',
   },
   openGraph: {
     type: 'website',
@@ -87,7 +84,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           <Toaster />
-          {process.env.NODE_ENV === 'production' && <Analytics />}
+          {shouldLoadVercelAnalytics && <Analytics />}
         </ThemeProvider>
       </body>
     </html>
