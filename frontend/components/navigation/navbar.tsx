@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Bell, Code2, Menu, Search } from 'lucide-react'
+import { Code2, Menu, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { getApiErrorMessage, getCurrentUser, logout, type AuthUser } from '@/lib/api'
@@ -14,8 +14,6 @@ import { Input } from '@/components/ui/input'
 import { getNavigationByRole } from '@/components/navigation/nav-config'
 import { MobileSidebar } from '@/components/navigation/mobile-sidebar'
 import { UserDropdown } from '@/components/navigation/user-dropdown'
-
-const desktopNotificationCount = 3
 
 export function AppNavbar() {
   const pathname = usePathname()
@@ -109,20 +107,6 @@ export function AppNavbar() {
           <div className="hidden items-center gap-2 md:flex">
             <ModeToggle compact />
 
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="relative rounded-full border border-border/35 bg-background/25 hover:bg-background/45"
-              aria-label="View notifications"
-            >
-              <Bell className="size-4" />
-              {desktopNotificationCount > 0 && (
-                <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
-                  {desktopNotificationCount}
-                </span>
-              )}
-            </Button>
-
             <UserDropdown
               user={user}
               isLoggingOut={isLoggingOut}
@@ -132,20 +116,6 @@ export function AppNavbar() {
 
           <div className="flex items-center gap-2 md:hidden">
             <ModeToggle compact />
-
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="relative rounded-full border border-border/35 bg-background/25"
-              aria-label="View notifications"
-            >
-              <Bell className="size-4" />
-              {desktopNotificationCount > 0 && (
-                <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
-                  {desktopNotificationCount}
-                </span>
-              )}
-            </Button>
 
             <Button
               variant="ghost"
@@ -168,7 +138,7 @@ export function AppNavbar() {
         user={user}
         navItems={navItems}
         pathname={pathname}
-        notificationCount={desktopNotificationCount}
+        notificationCount={0}
         isLoggingOut={isLoggingOut}
         onLogout={() => handleLogout()}
       />
