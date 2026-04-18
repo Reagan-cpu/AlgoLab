@@ -93,14 +93,15 @@ export interface ExperimentListParams {
 }
 
 interface BackendReport {
-  _id: string
-  userId: string
-  experimentId: string
+  _id?: string
+  id?: string
+  userId?: string
+  experimentId?: string
   fileName: string
   mimeType: string
   size: number
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
 }
 
 interface BackendUser {
@@ -231,10 +232,12 @@ function normalizeExperiment(item: BackendExperiment): ExperimentRecord {
 }
 
 function normalizeReport(item: BackendReport): ReportRecord {
+  const resolvedId = item._id ?? item.id ?? ''
+
   return {
-    id: item._id,
-    userId: item.userId,
-    experimentId: item.experimentId,
+    id: resolvedId,
+    userId: item.userId ?? '',
+    experimentId: item.experimentId ?? '',
     fileName: item.fileName,
     mimeType: item.mimeType,
     size: item.size,
@@ -467,6 +470,34 @@ export async function getReportById(id: string): Promise<ReportRecord> {
   return normalizeReport(data.report)
 }
 
+function decodeBase64PdfBlob(rawText: string): Blob | null {
+  const trimmed = rawText.trim().replace(/^"|"$/g, '')
+
+  if (!trimmed || /[^A-Za-z0-9+/=\r\n]/.test(trimmed)) {
+    return null
+  }
+
+  try {
+    const normalized = trimmed.replace(/\s+/g, '')
+    const binary = atob(normalized)
+    const bytes = new Uint8Array(binary.length)
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index)
+    }
+
+    const header = new TextDecoder('utf-8').decode(bytes.subarray(0, 4))
+
+    if (header !== '%PDF') {
+      return null
+    }
+
+    return new Blob([bytes], { type: 'application/pdf' })
+  } catch {
+    return null
+  }
+}
+
 export async function downloadReportById(id: string): Promise<{ blob: Blob; fileName: string }> {
   const response = await api.get<Blob>(`/reports/${id}/download`, {
     responseType: 'blob',
@@ -475,9 +506,34 @@ export async function downloadReportById(id: string): Promise<{ blob: Blob; file
   const disposition = response.headers['content-disposition']
   const match = disposition?.match(/filename=\"?([^\";]+)\"?/)
   const fileName = match?.[1] ?? `report-${id}.pdf`
+  const contentType = String(response.headers['content-type'] ?? response.data.type ?? '')
+
+  if (contentType.includes('application/json')) {
+    const text = await response.data.text()
+
+    try {
+      const payload = JSON.parse(text) as { message?: string }
+      throw new Error(payload.message ?? 'Failed to download report')
+    } catch {
+      throw new Error('Failed to download report')
+    }
+  }
+
+  const preview = await response.data
+    .slice(0, 64)
+    .text()
+    .catch(() => '')
+
+  const looksLikeBase64Pdf = /^"?JVBER/i.test(preview.trim())
+  const decodedBlob = looksLikeBase64Pdf
+    ? await response.data
+        .text()
+        .then((textPayload) => decodeBase64PdfBlob(textPayload))
+        .catch(() => null)
+    : null
 
   return {
-    blob: response.data,
+    blob: decodedBlob ?? response.data,
     fileName,
   }
 }

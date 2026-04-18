@@ -94,6 +94,11 @@ export default function ReportsPage() {
   }
 
   const handleDownload = async (reportId: string) => {
+    if (!reportId) {
+      toast.error('This report cannot be downloaded because its id is missing')
+      return
+    }
+
     try {
       setDownloadingReportId(reportId)
       const { blob, fileName } = await downloadReportById(reportId)
@@ -101,7 +106,9 @@ export default function ReportsPage() {
       const link = document.createElement('a')
       link.href = url
       link.download = fileName
+      document.body.appendChild(link)
       link.click()
+      link.remove()
       URL.revokeObjectURL(url)
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Failed to download report'))
@@ -198,7 +205,7 @@ export default function ReportsPage() {
             <div className="space-y-3">
               {reports.map((report) => (
                 <div
-                  key={report.id}
+                  key={report.id || `${report.fileName}-${report.createdAt}`}
                   className="glass rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
                 >
                   <div>
@@ -212,7 +219,7 @@ export default function ReportsPage() {
                     variant="outline"
                     className="border-border/50 text-foreground hover:bg-card/50"
                     onClick={() => void handleDownload(report.id)}
-                    disabled={downloadingReportId === report.id}
+                    disabled={downloadingReportId === report.id || !report.id}
                   >
                     <Download className="w-4 h-4 mr-2" />
                     {downloadingReportId === report.id ? 'Downloading...' : 'Download PDF'}

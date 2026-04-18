@@ -22,7 +22,17 @@ interface SearchTarget {
   description?: string
 }
 
-export function AppNavbar({ onSidebarToggle }: { onSidebarToggle?: () => void }) {
+interface AppNavbarProps {
+  onSidebarToggle?: () => void
+  onRightSidebarToggle?: () => void
+  rightSidebarOpen?: boolean
+}
+
+export function AppNavbar({
+  onSidebarToggle,
+  onRightSidebarToggle,
+  rightSidebarOpen,
+}: AppNavbarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -279,6 +289,18 @@ export function AppNavbar({ onSidebarToggle }: { onSidebarToggle?: () => void })
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
+            {onRightSidebarToggle && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRightSidebarToggle}
+                className="hidden h-9 px-3 text-xs font-semibold 2xl:flex"
+                aria-label="Toggle right sidebar"
+              >
+                {rightSidebarOpen ? 'Hide Info' : 'Show Info'}
+              </Button>
+            )}
+
             <ModeToggle compact />
 
             <UserDropdown

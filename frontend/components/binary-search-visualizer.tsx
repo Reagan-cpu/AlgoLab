@@ -184,7 +184,17 @@ const HOW_TO_STEPS = [
   },
 ]
 
-export function BinarySearchVisualizer() {
+interface BinarySearchVisualizerProps {
+  guideOpen?: boolean
+  onGuideOpenChange?: (open: boolean) => void
+  hideGuideToggle?: boolean
+}
+
+export function BinarySearchVisualizer({
+  guideOpen,
+  onGuideOpenChange,
+  hideGuideToggle = false,
+}: BinarySearchVisualizerProps = {}) {
   const [array, setArray] = useState<number[]>([])
   const [algorithm, setAlgorithm] = useState<SearchAlgorithm>('binary')
   const [isRunning, setIsRunning] = useState(false)
@@ -200,8 +210,9 @@ export function BinarySearchVisualizer() {
     comparisons: 0,
     steps: 0,
   })
-  const [isGuideOpen, setIsGuideOpen] = useState(false)
+  const [internalGuideOpen, setInternalGuideOpen] = useState(false)
   const [barsContainerWidth, setBarsContainerWidth] = useState(0)
+  const [isBothSidebarsCollapsed, setIsBothSidebarsCollapsed] = useState(false)
 
   const algorithmInfo = SEARCH_ALGORITHM_INFO[algorithm]
   const isTreeMode = algorithm === 'bfs' || algorithm === 'dfs'
@@ -211,6 +222,19 @@ export function BinarySearchVisualizer() {
   const barsContainerRef = useRef<HTMLDivElement | null>(null)
   const historyRef = useRef<SortStep[]>([])
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1)
+
+  const resolvedGuideOpen = typeof guideOpen === 'boolean' ? guideOpen : internalGuideOpen
+
+  const handleGuideOpenChange = useCallback(
+    (open: boolean) => {
+      if (typeof guideOpen !== 'boolean') {
+        setInternalGuideOpen(open)
+      }
+
+      onGuideOpenChange?.(open)
+    },
+    [guideOpen, onGuideOpenChange]
+  )
 
   const labelInterval = useMemo(() => {
     if (array.length <= 30 && barsContainerWidth > 0) {
@@ -268,6 +292,23 @@ export function BinarySearchVisualizer() {
     return maxNodes
   }, [treeLevels, treeNodeCount])
 
+  const treeViewboxWidth = useMemo(() => {
+    if (!isTreeMode || !isBothSidebarsCollapsed || barsContainerWidth <= 0) {
+      return TREE_VIEWBOX_WIDTH
+    }
+
+    // Use wider space only when both sidebars are collapsed.
+    return Math.max(TREE_VIEWBOX_WIDTH, Math.round((barsContainerWidth - 32) * 1.15))
+  }, [barsContainerWidth, isBothSidebarsCollapsed, isTreeMode])
+
+  const treeViewboxHeight = useMemo(() => {
+    if (!isTreeMode || !isBothSidebarsCollapsed) {
+      return TREE_VIEWBOX_HEIGHT
+    }
+
+    return Math.round(TREE_VIEWBOX_HEIGHT * 1.24)
+  }, [isBothSidebarsCollapsed, isTreeMode])
+
   const treeNodeRadius = useMemo(() => {
     if (treeNodeCount <= 0) {
       return 0
@@ -284,12 +325,12 @@ export function BinarySearchVisualizer() {
             ? 12
             : 9
 
-    const usableWidth = TREE_VIEWBOX_WIDTH - TREE_HORIZONTAL_PADDING * 2
+    const usableWidth = treeViewboxWidth - TREE_HORIZONTAL_PADDING * 2
     const maxSafeDiameter = (usableWidth / (treeMaxNodesInLevel + 1)) * 0.86
     const widthLimitedRadius = Math.floor(maxSafeDiameter / 2)
 
     return Math.max(5, Math.min(baseRadius, widthLimitedRadius))
-  }, [treeLevels, treeMaxNodesInLevel, treeNodeCount])
+  }, [treeLevels, treeMaxNodesInLevel, treeNodeCount, treeViewboxWidth])
 
   const treeValueFontSize = useMemo(
     () => Math.max(8, Math.round(treeNodeRadius * 0.72)),
@@ -316,9 +357,9 @@ export function BinarySearchVisualizer() {
       return []
     }
 
-    const usableWidth = TREE_VIEWBOX_WIDTH - TREE_HORIZONTAL_PADDING * 2
+    const usableWidth = treeViewboxWidth - TREE_HORIZONTAL_PADDING * 2
     const usableHeight =
-      TREE_VIEWBOX_HEIGHT - TREE_VERTICAL_PADDING_TOP - TREE_VERTICAL_PADDING_BOTTOM
+      treeViewboxHeight - TREE_VERTICAL_PADDING_TOP - TREE_VERTICAL_PADDING_BOTTOM
 
     return Array.from({ length: treeNodeCount }, (_, index) => {
       const level = Math.floor(Math.log2(index + 1))
@@ -349,7 +390,16 @@ export function BinarySearchVisualizer() {
         showIndex,
       }
     })
-  }, [activeRange, array, comparing, foundIndex, treeLevels, treeNodeCount])
+  }, [
+    activeRange,
+    array,
+    comparing,
+    foundIndex,
+    treeLevels,
+    treeNodeCount,
+    treeViewboxHeight,
+    treeViewboxWidth,
+  ])
 
   const treeEdges = useMemo(() => {
     if (treeNodes.length <= 1) {
@@ -390,6 +440,44 @@ export function BinarySearchVisualizer() {
     })
 
     observer.observe(container)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    const container = barsContainerRef.current
+
+    if (!container || typeof HTMLElement === 'undefined') {
+      return
+    }
+
+    const contentSection = container.closest('[data-both-sidebars-collapsed]') as HTMLElement | null
+
+    if (!contentSection) {
+      setIsBothSidebarsCollapsed(false)
+      return
+    }
+
+    const updateCollapsedState = () => {
+      setIsBothSidebarsCollapsed(contentSection.dataset.bothSidebarsCollapsed === 'true')
+    }
+
+    updateCollapsedState()
+
+    if (typeof MutationObserver === 'undefined') {
+      return
+    }
+
+    const observer = new MutationObserver(() => {
+      updateCollapsedState()
+    })
+
+    observer.observe(contentSection, {
+      attributes: true,
+      attributeFilter: ['data-both-sidebars-collapsed'],
+    })
 
     return () => {
       observer.disconnect()
@@ -546,6 +634,38 @@ export function BinarySearchVisualizer() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Search guide content */}
+      <div className="flex justify-center">
+        <Collapsible open={resolvedGuideOpen} onOpenChange={handleGuideOpenChange} className="w-full">
+          {!hideGuideToggle && (
+            <div className="flex justify-center mb-2">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="text-muted-foreground text-xs hover:text-primary transition-colors">
+                  <HelpCircle className="mr-2 size-3.5" />
+                  Search Guide
+                  <ChevronDown className={cn('ml-1.5 size-3.5 transition-transform', resolvedGuideOpen && 'rotate-180')} />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          )}
+          <CollapsibleContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 pb-1">
+              {HOW_TO_STEPS.map((step, index) => (
+                <Card key={step.title} className="glass-card p-4 border-muted/30">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
+                      {index + 1}
+                    </span>
+                    <h4 className="text-sm font-bold">{step.title}</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{step.detail}</p>
+                </Card>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
       {/* ── Top Metrics Bar ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
         <div className="glass-card flex flex-col justify-center border-primary/20 p-3 text-center">
@@ -764,35 +884,6 @@ export function BinarySearchVisualizer() {
             </Tabs>
           </Card>
 
-          {/* Dataset Preview (Permanent) */}
-          <Card className={cn("glass-card p-5 space-y-3 transition-all", array.length === 0 && "opacity-50")}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Layers className="size-4 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Dataset Preview</h3>
-              </div>
-              <Badge variant="outline" className="text-[10px] border-border/50 bg-background/30">
-                {array.length} items
-              </Badge>
-            </div>
-            {array.length === 0 ? (
-               <p className="text-[11px] text-muted-foreground italic">No dataset generated yet.</p>
-            ) : (
-              <div className="max-h-40 overflow-y-auto pr-1">
-                <div className="flex flex-wrap gap-1.5">
-                  {array.map((value, index) => (
-                    <span
-                      key={`${value}-${index}`}
-                      className="rounded-md border border-border/50 bg-background/45 px-2 py-0.5 font-mono text-[11px] text-foreground/85"
-                    >
-                      {value}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Card>
-
           {/* Current State Card - REMOVED */}
         </aside>
 
@@ -827,7 +918,9 @@ export function BinarySearchVisualizer() {
               className={cn(
                 'bg-gradient-to-b from-input/5 to-input/10',
                 isTreeMode
-                  ? 'h-[28rem] px-4 py-4'
+                  ? isBothSidebarsCollapsed
+                    ? 'h-[34rem] px-4 py-4'
+                    : 'h-[28rem] px-4 py-4'
                   : 'h-80 flex items-end justify-center px-6 py-5 gap-0.5 sm:gap-1'
               )}
             >
@@ -843,7 +936,7 @@ export function BinarySearchVisualizer() {
                 <div className="relative h-full w-full overflow-x-auto overflow-y-hidden rounded-lg border border-border/20 bg-background/20">
                   <div className="h-full w-full min-w-[700px]">
                     <svg
-                      viewBox={`0 0 ${TREE_VIEWBOX_WIDTH} ${TREE_VIEWBOX_HEIGHT}`}
+                      viewBox={`0 0 ${treeViewboxWidth} ${treeViewboxHeight}`}
                       className="h-full w-full"
                       preserveAspectRatio="xMinYMin meet"
                       role="img"
@@ -1057,34 +1150,36 @@ export function BinarySearchVisualizer() {
         </main>
       </div>
 
-      <div className="flex justify-center">
-        <Collapsible open={isGuideOpen} onOpenChange={setIsGuideOpen} className="w-full">
-          <div className="flex justify-center mb-2">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="text-muted-foreground text-xs hover:text-primary transition-colors">
-                <HelpCircle className="mr-2 size-3.5" />
-                Search Guide
-                <ChevronDown className={cn('ml-1.5 size-3.5 transition-transform', isGuideOpen && 'rotate-180')} />
-              </Button>
-            </CollapsibleTrigger>
+      {/* Dataset (Full Width) */}
+      <Card className={cn("glass-card p-5 space-y-3 transition-all", array.length === 0 && "opacity-50")}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="size-4 text-primary" />
+            <h3 className="text-base font-bold text-foreground">Dataset</h3>
           </div>
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 pb-4">
-              {HOW_TO_STEPS.map((step, index) => (
-                <Card key={step.title} className="glass-card p-4 border-muted/30">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
-                      {index + 1}
-                    </span>
-                    <h4 className="text-sm font-bold">{step.title}</h4>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{step.detail}</p>
-                </Card>
+          <Badge variant="outline" className="text-[10px] border-border/50 bg-background/30">
+            {array.length} items
+          </Badge>
+        </div>
+        {array.length === 0 ? (
+           <p className="text-[11px] text-muted-foreground italic">No dataset generated yet.</p>
+        ) : (
+          <div className="rounded-lg border border-border/40 bg-background/30 p-2.5">
+            <div className="flex flex-wrap gap-1.5">
+              {array.map((value, index) => (
+                <span
+                  key={`${value}-${index}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/45 px-2 py-1"
+                >
+                  <span className="text-[10px] text-muted-foreground">[{index}]</span>
+                  <span className="font-mono text-[11px] font-semibold text-foreground/90">{value}</span>
+                </span>
               ))}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
+          </div>
+        )}
+      </Card>
+
     </div>
   )
 }

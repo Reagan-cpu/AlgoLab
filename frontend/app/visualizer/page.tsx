@@ -1,14 +1,30 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { AlgorithmVisualizer } from '@/components/algorithm-visualizer'
 import { WorkspaceShell } from '@/components/layout/workspace-shell'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { ChevronDown, HelpCircle } from 'lucide-react'
 
 export default function VisualizerPage() {
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
+
   return (
     <WorkspaceShell
-      title="Algorithm Visualizer"
+      title="Sorting Algorithm Visualizer"
       description="A beginner-first workspace to generate datasets, run sorting algorithms, and understand every operation step-by-step."
+      headerAction={(
+        <Button
+          variant="ghost"
+          className="text-muted-foreground text-xs hover:text-primary transition-colors"
+          onClick={() => setIsGuideOpen((previous) => !previous)}
+        >
+          <HelpCircle className="mr-2 size-3.5" />
+          Need help? View the Beginner's Guide
+          <ChevronDown className={cn('ml-1.5 size-3.5 transition-transform', isGuideOpen && 'rotate-180')} />
+        </Button>
+      )}
       rightPanel={(
         <section className="rounded-xl border border-border/30 bg-background/35 p-3">
           <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -29,7 +45,11 @@ export default function VisualizerPage() {
       )}
     >
       <div className="space-y-6">
-        <AlgorithmVisualizer />
+        <AlgorithmVisualizer
+          guideOpen={isGuideOpen}
+          onGuideOpenChange={setIsGuideOpen}
+          hideGuideToggle
+        />
         </div>
     </WorkspaceShell>
   )

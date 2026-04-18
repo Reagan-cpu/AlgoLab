@@ -341,8 +341,18 @@ function toCompactStepSummary(stepMessage: string, maxLength: number = 92) {
   return `${normalized.slice(0, maxLength).trimEnd()}...`
 }
 
-export function AlgorithmVisualizer() {
-  const [isGuideOpen, setIsGuideOpen] = useState(false)
+interface AlgorithmVisualizerProps {
+  guideOpen?: boolean
+  onGuideOpenChange?: (open: boolean) => void
+  hideGuideToggle?: boolean
+}
+
+export function AlgorithmVisualizer({
+  guideOpen,
+  onGuideOpenChange,
+  hideGuideToggle = false,
+}: AlgorithmVisualizerProps = {}) {
+  const [internalGuideOpen, setInternalGuideOpen] = useState(false)
   const [arraySize, setArraySize] = useState(30)
   const [algorithm, setAlgorithm] = useState<SupportedAlgorithm>('bubble')
   const [dataType, setDataType] = useState('Random')
@@ -380,6 +390,19 @@ export function AlgorithmVisualizer() {
   const swapsRef = useRef(0)
   const speedRef = useRef(speed)
   const barsContainerRef = useRef<HTMLDivElement | null>(null)
+
+  const resolvedGuideOpen = typeof guideOpen === 'boolean' ? guideOpen : internalGuideOpen
+
+  const handleGuideOpenChange = useCallback(
+    (open: boolean) => {
+      if (typeof guideOpen !== 'boolean') {
+        setInternalGuideOpen(open)
+      }
+
+      onGuideOpenChange?.(open)
+    },
+    [guideOpen, onGuideOpenChange]
+  )
 
   const algorithmInfo = ALGORITHM_INFO[algorithm]
 
@@ -864,6 +887,38 @@ export function AlgorithmVisualizer() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Beginner guide content */}
+      <div className="flex justify-center">
+        <Collapsible open={resolvedGuideOpen} onOpenChange={handleGuideOpenChange} className="w-full">
+          {!hideGuideToggle && (
+            <div className="flex justify-center mb-2">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="text-muted-foreground text-xs hover:text-primary transition-colors">
+                  <HelpCircle className="mr-2 size-3.5" />
+                  Need help? View the Beginner's Guide
+                  <ChevronDown className={cn('ml-1.5 size-3.5 transition-transform', resolvedGuideOpen && 'rotate-180')} />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          )}
+          <CollapsibleContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 pb-1">
+              {HOW_TO_STEPS.map((step, index) => (
+                <Card key={step.title} className="glass-card p-4 border-muted/30">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
+                      {index + 1}
+                    </span>
+                    <h4 className="text-sm font-bold">{step.title}</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{step.detail}</p>
+                </Card>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
       {/* ── Top Metrics Bar ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div className="glass-card flex flex-col justify-center border-primary/20 p-3 text-center">
@@ -1048,36 +1103,6 @@ export function AlgorithmVisualizer() {
             </Tabs>
           </Card>
 
-          {/* Dataset Preview (Permanent) */}
-          <Card className={cn("glass-card p-5 space-y-3 transition-all", array.length === 0 && "opacity-50")}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Layers className="size-4 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Dataset Preview</h3>
-              </div>
-              <Badge variant="outline" className="text-[10px] border-border/50 bg-background/30">
-                {array.length} items
-              </Badge>
-            </div>
-            {array.length === 0 ? (
-               <p className="text-[11px] text-muted-foreground italic">No dataset generated yet.</p>
-            ) : (
-              <div className="max-h-40 overflow-y-auto pr-1">
-                <div className="flex flex-wrap gap-1.5">
-                  {array.map((value, index) => (
-                    <span
-                      key={`${value}-${index}`}
-                      className="rounded-md border border-border/50 bg-background/45 px-2 py-0.5 font-mono text-[11px] text-foreground/85"
-                    >
-                      {value}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Card>
-
-          {/* Quick Info Card - REMOVED */}
         </aside>
 
         {/* ── Right Column: Visualization ── */}
@@ -1212,7 +1237,7 @@ export function AlgorithmVisualizer() {
             <div className="px-6 py-3 bg-background/20 border-t border-border/20 space-y-2">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-muted-foreground uppercase font-bold">Operation</span>
-                <Badge variant="outline" className={cn('text-[8px] h-5', toStepTypeBadgeClass(stepType ?? undefined))}>
+                <Badge variant="outline" className={cn('text-[10px] h-6 px-2.5', toStepTypeBadgeClass(stepType ?? undefined))}>
                   {operationLabel}
                 </Badge>
               </div>
@@ -1228,72 +1253,75 @@ export function AlgorithmVisualizer() {
               </div>
             </div>
 
-            {/* Algorithm Info - Compact Version */}
-            <div className="px-6 py-3 bg-primary/5 border-t border-primary/10">
-              <h3 className="text-base font-bold text-primary mb-2">{algorithmInfo.name} Theory</h3>
-              <p className="text-sm text-foreground/70 leading-relaxed mb-3">{algorithmInfo.description}</p>
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <div className="p-2 rounded-lg border border-border/20 bg-background/30 flex flex-col gap-0.5">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground">Worst</span>
-                  <span className="text-sm font-bold text-red-400 font-mono">{algorithmInfo.worstCase}</span>
-                </div>
-                <div className="p-2 rounded-lg border border-border/20 bg-background/30 flex flex-col gap-0.5">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground">Avg</span>
-                  <span className="text-sm font-bold text-blue-400 font-mono">{algorithmInfo.averageCase}</span>
-                </div>
-                <div className="p-2 rounded-lg border border-border/20 bg-background/30 flex flex-col gap-0.5">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground">Best</span>
-                  <span className="text-sm font-bold text-emerald-400 font-mono">{algorithmInfo.bestCase}</span>
-                </div>
-              </div>
-              
-              {/* Space Complexity & Current Operation */}
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/10">
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground">Space</span>
-                  <span className="text-sm font-bold text-purple-400 font-mono">{algorithmInfo.spaceComplexity}</span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[9px] uppercase font-bold text-muted-foreground">Current Op</span>
-                  <Badge variant="outline" className={cn('text-[8px] h-5', toStepTypeBadgeClass(stepType ?? undefined))}>
-                    {operationLabel}
-                  </Badge>
-                </div>
-              </div>
-            </div>
           </Card>
         </main>
       </div>
 
-      {/* beginner guide button floating or at bottom */}
-      <div className="flex justify-center">
-        <Collapsible open={isGuideOpen} onOpenChange={setIsGuideOpen} className="w-full">
-          <div className="flex justify-center mb-2">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="text-muted-foreground text-xs hover:text-primary transition-colors">
-                <HelpCircle className="mr-2 size-3.5" />
-                Need help? View the Beginner's Guide
-                <ChevronDown className={cn('ml-1.5 size-3.5 transition-transform', isGuideOpen && 'rotate-180')} />
-              </Button>
-            </CollapsibleTrigger>
+      {/* Dataset Preview (Full Width) */}
+      <Card className={cn("glass-card p-5 space-y-3 transition-all", array.length === 0 && "opacity-50")}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="size-4 text-primary" />
+            <h3 className="text-base font-bold text-foreground">Dataset</h3>
           </div>
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 pb-4">
-              {HOW_TO_STEPS.map((step, index) => (
-                <Card key={step.title} className="glass-card p-4 border-muted/30">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
-                      {index + 1}
-                    </span>
-                    <h4 className="text-sm font-bold">{step.title}</h4>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{step.detail}</p>
-                </Card>
+          <Badge variant="outline" className="text-[10px] border-border/50 bg-background/30">
+            {array.length} items
+          </Badge>
+        </div>
+        {array.length === 0 ? (
+           <p className="text-[11px] text-muted-foreground italic">No dataset generated yet.</p>
+        ) : (
+          <div className="rounded-lg border border-border/40 bg-background/30 p-2.5">
+            <div className="flex flex-wrap gap-1.5">
+              {array.map((value, index) => (
+                <span
+                  key={`${value}-${index}`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-background/45 px-2.5 py-1.5"
+                >
+                  <span className="text-xs text-muted-foreground">[{index}]</span>
+                  <span className="font-mono text-sm font-bold text-foreground/90">{value}</span>
+                </span>
               ))}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Sort Theory (Below Dataset Preview) */}
+      <Card className="glass-card p-0 overflow-hidden">
+        <div className="px-6 py-3 bg-primary/5 border-b border-primary/10">
+          <h3 className="text-lg font-bold text-primary mb-2">{algorithmInfo.name} Theory</h3>
+          <p className="text-base text-foreground/75 leading-relaxed mb-3">{algorithmInfo.description}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-3">
+            <div className="p-2 rounded-lg border border-border/20 bg-background/30 flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Worst</span>
+              <span className="text-base font-bold text-red-400 font-mono">{algorithmInfo.worstCase}</span>
+            </div>
+            <div className="p-2 rounded-lg border border-border/20 bg-background/30 flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Avg</span>
+              <span className="text-base font-bold text-blue-400 font-mono">{algorithmInfo.averageCase}</span>
+            </div>
+            <div className="p-2 rounded-lg border border-border/20 bg-background/30 flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Best</span>
+              <span className="text-base font-bold text-emerald-400 font-mono">{algorithmInfo.bestCase}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 pt-2 border-t border-border/10 sm:grid-cols-2">
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Space</span>
+              <span className="text-base font-bold text-purple-400 font-mono">{algorithmInfo.spaceComplexity}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">Current Op</span>
+              <Badge variant="outline" className={cn('text-[10px] h-6 px-2.5', toStepTypeBadgeClass(stepType ?? undefined))}>
+                {operationLabel}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </Card>
+
     </div>
   )
 }
