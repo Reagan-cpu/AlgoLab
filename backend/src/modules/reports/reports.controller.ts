@@ -11,6 +11,53 @@ import {
   listReports,
 } from "./reports.service"
 
+function toPdfBuffer(pdfData: unknown): Buffer {
+  if (Buffer.isBuffer(pdfData)) {
+    return pdfData
+  }
+
+  if (pdfData instanceof Uint8Array) {
+    return Buffer.from(pdfData)
+  }
+
+  if (typeof pdfData === "string") {
+    const trimmed = pdfData.trim().replace(/^"|"$/g, "")
+    const decoded = Buffer.from(trimmed, "base64")
+
+    if (decoded.subarray(0, 4).toString("utf8") === "%PDF") {
+      return decoded
+    }
+
+    return Buffer.from(trimmed)
+  }
+
+  if (pdfData && typeof pdfData === "object") {
+    const candidate = pdfData as {
+      data?: number[]
+      buffer?: unknown
+      type?: string
+    }
+
+    if (Array.isArray(candidate.data)) {
+      return Buffer.from(candidate.data)
+    }
+
+    if (candidate.buffer instanceof Uint8Array) {
+      return Buffer.from(candidate.buffer)
+    }
+
+    if (candidate.buffer instanceof ArrayBuffer) {
+      return Buffer.from(candidate.buffer)
+    }
+
+    if (candidate.type === "Buffer" && Array.isArray(candidate.data)) {
+      return Buffer.from(candidate.data)
+    }
+  }
+
+  throw new AppError("Report data is not a valid PDF payload", 500, "INVALID_REPORT_DATA")
+}
+
 function requireUser(req: Request) {
   if (!req.user) {
     throw new AppError("Authentication required", 401, "UNAUTHENTICATED")
@@ -60,11 +107,13 @@ export const downloadReportController = asyncHandler(async (req: Request, res: R
   const { reportId } = req.params as { reportId: string }
 
   const report = await downloadReport(user.userId, user.role, reportId)
+  const pdfBuffer = toPdfBuffer(report.pdfData)
 
-  res.setHeader("Content-Type", report.mimeType)
+  res.setHeader("Content-Type", report.mimeType || "application/pdf")
   res.setHeader("Content-Disposition", `attachment; filename=\"${report.fileName}\"`)
+  res.setHeader("Content-Length", String(pdfBuffer.byteLength))
 
-  return res.status(200).send(report.pdfData)
+  return res.status(200).send(pdfBuffer)
 })
 
 export const deleteReportController = asyncHandler(async (req: Request, res: Response) => {

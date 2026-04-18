@@ -89,7 +89,8 @@ export async function downloadReport(userId: string, role: UserRole, reportId: s
     ...buildScopeFilter(userId, role),
   }
 
-  const report = await ReportModel.findOne(filter).select("+pdfData").lean()
+  // Keep this as a mongoose document so Buffer fields stay as raw bytes.
+  const report = await ReportModel.findOne(filter).select("+pdfData")
 
   if (!report) {
     throw new AppError("Report not found", 404, "REPORT_NOT_FOUND")

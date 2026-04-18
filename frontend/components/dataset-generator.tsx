@@ -450,14 +450,15 @@ export function DatasetGenerator({
           {preview.length === 0 ? (
             <p className="text-sm text-foreground/60">No dataset generated yet.</p>
           ) : (
-            <div className="max-h-20 overflow-y-auto pr-1">
+            <div className="rounded-lg border border-border/40 bg-background/30 p-2.5">
               <div className="flex flex-wrap gap-1.5">
                 {preview.map((value, index) => (
                   <span
                     key={`${value}-${index}`}
-                    className="rounded-md border border-border/50 bg-background/45 px-2 py-0.5 font-mono text-[11px] text-foreground/85"
+                    className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/45 px-2 py-1"
                   >
-                    {value}
+                    <span className="text-[10px] text-muted-foreground">[{index}]</span>
+                    <span className="font-mono text-[11px] font-semibold text-foreground/90">{value}</span>
                   </span>
                 ))}
               </div>

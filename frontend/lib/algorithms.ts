@@ -80,6 +80,11 @@ async function waitForControl(
 }
 
 export function speedToDelayMs(speed: number, stepType?: SortStep['stepType']) {
+  // Values above the UI range (1-100) are used for benchmark mode with no animation delay.
+  if (speed > 100) {
+    return 0
+  }
+
   const clampedSpeed = Math.max(1, Math.min(100, speed))
   const normalized = (clampedSpeed - 1) / 99
   const slowestDelay = 900

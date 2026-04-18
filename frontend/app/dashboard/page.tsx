@@ -13,14 +13,14 @@ import {
   YAxis,
 } from 'recharts'
 import {
-  Activity,
   ArrowRight,
   BarChart2,
   Clock,
   FileText,
   FlaskConical,
+  Gauge,
   Layers,
-  Play,
+  Search,
   Sparkles,
   TrendingUp,
   Zap,
@@ -240,10 +240,10 @@ export default function DashboardPage() {
 
   const quickActions: QuickActionProps[] = [
     {
-      href: '/experiments',
-      icon: <Play className="h-4 w-4" />,
-      label: 'Run Experiment',
-      description: 'Benchmark a new algorithm',
+      href: '/visualizer',
+      icon: <Gauge className="h-4 w-4" />,
+      label: 'Sort Algorithms Visualiser',
+      description: 'Visualize sorting step by step',
       gradient: 'bg-gradient-to-br from-violet-500 to-indigo-600',
     },
     {
@@ -254,10 +254,10 @@ export default function DashboardPage() {
       gradient: 'bg-gradient-to-br from-cyan-500 to-blue-600',
     },
     {
-      href: '/analytics',
-      icon: <Activity className="h-4 w-4" />,
-      label: 'Analytics',
-      description: 'Class-wide insights',
+      href: '/binary-search',
+      icon: <Search className="h-4 w-4" />,
+      label: 'Search Algorithms Visualiser',
+      description: 'Explore search traversal behaviors',
       gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
     },
     {
@@ -300,12 +300,6 @@ export default function DashboardPage() {
                     : `You have run ${summary.totalExperiments} experiment${summary.totalExperiments !== 1 ? 's' : ''} so far. Keep going!`}
               </p>
             </div>
-            <Link href="/experiments">
-              <Button className="shrink-0 gap-2 bg-primary/90 text-white hover:bg-primary shadow-md">
-                <Zap className="h-4 w-4" />
-                New Experiment
-              </Button>
-            </Link>
           </div>
         </div>
 
@@ -364,7 +358,7 @@ export default function DashboardPage() {
               </div>
               <Link href="/experiments">
                 <Button size="sm" className="mt-1 gap-2 text-xs">
-                  <Play className="h-3 w-3" /> Run first experiment
+                  <Zap className="h-3 w-3" /> Run first experiment
                 </Button>
               </Link>
             </div>

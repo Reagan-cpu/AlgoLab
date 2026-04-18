@@ -15,6 +15,13 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import {
   bubbleSort,
+  selectionSort,
+  insertionSort,
+  heapSort,
+  shellSort,
+  countingSort,
+  radixSort,
+  bucketSort,
   quickSort,
   mergeSort,
   generateRandomArray,
@@ -22,10 +29,51 @@ import {
 } from '@/lib/algorithms'
 import { Play, RotateCcw } from 'lucide-react'
 
+type RacingAlgorithm =
+  | 'bubble'
+  | 'selection'
+  | 'insertion'
+  | 'merge'
+  | 'quick'
+  | 'heap'
+  | 'shell'
+  | 'counting'
+  | 'radix'
+  | 'bucket'
+
+const RACING_ALGORITHM_OPTIONS: Array<{ value: RacingAlgorithm; label: string }> = [
+  { value: 'bubble', label: 'Bubble Sort' },
+  { value: 'selection', label: 'Selection Sort' },
+  { value: 'insertion', label: 'Insertion Sort' },
+  { value: 'merge', label: 'Merge Sort' },
+  { value: 'quick', label: 'Quick Sort' },
+  { value: 'heap', label: 'Heap Sort' },
+  { value: 'shell', label: 'Shell Sort' },
+  { value: 'counting', label: 'Counting Sort' },
+  { value: 'radix', label: 'Radix Sort' },
+  { value: 'bucket', label: 'Bucket Sort' },
+]
+
+const RACING_ALGORITHM_RUNNERS: Record<
+  RacingAlgorithm,
+  (arr: number[], onStep: (step: SortStep) => void, speed: number) => Promise<unknown>
+> = {
+  bubble: bubbleSort,
+  selection: selectionSort,
+  insertion: insertionSort,
+  merge: mergeSort,
+  quick: quickSort,
+  heap: heapSort,
+  shell: shellSort,
+  counting: countingSort,
+  radix: radixSort,
+  bucket: bucketSort,
+}
+
 export default function RacingPage() {
   const [arraySize, setArraySize] = useState(50)
-  const [algorithm1, setAlgorithm1] = useState('bubble')
-  const [algorithm2, setAlgorithm2] = useState('quick')
+  const [algorithm1, setAlgorithm1] = useState<RacingAlgorithm>('bubble')
+  const [algorithm2, setAlgorithm2] = useState<RacingAlgorithm>('quick')
   const [isRunning, setIsRunning] = useState(false)
   const [array, setArray] = useState(() => generateRandomArray(50))
   const [speed, setSpeed] = useState(50)
@@ -114,30 +162,14 @@ export default function RacingPage() {
     const arrayCopy2 = [...array]
 
     const runAlgorithm = async (
-      alg: string,
+      alg: RacingAlgorithm,
       arr: number[],
       isLeftSide: boolean
     ) => {
       try {
-        if (alg === 'bubble') {
-          await bubbleSort(
-            arr,
-            isLeftSide ? handleLeftStep : handleRightStep,
-            speed
-          )
-        } else if (alg === 'quick') {
-          await quickSort(
-            arr,
-            isLeftSide ? handleLeftStep : handleRightStep,
-            speed
-          )
-        } else if (alg === 'merge') {
-          await mergeSort(
-            arr,
-            isLeftSide ? handleLeftStep : handleRightStep,
-            speed
-          )
-        }
+        const onStep = isLeftSide ? handleLeftStep : handleRightStep
+        await RACING_ALGORITHM_RUNNERS[alg](arr, onStep, speed)
+
         finishedRef.current[isLeftSide ? 'left' : 'right'] = true
 
         if (finishedRef.current.left && finishedRef.current.right) {
@@ -173,18 +205,8 @@ export default function RacingPage() {
   ])
 
   const maxValue = Math.max(...array)
-  const getAlgorithmName = (alg: string) => {
-    switch (alg) {
-      case 'bubble':
-        return 'Bubble Sort'
-      case 'quick':
-        return 'Quick Sort'
-      case 'merge':
-        return 'Merge Sort'
-      default:
-        return alg
-    }
-  }
+  const getAlgorithmName = (alg: RacingAlgorithm) =>
+    RACING_ALGORITHM_OPTIONS.find((option) => option.value === alg)?.label ?? alg
 
   return (
     <WorkspaceShell
@@ -201,16 +223,18 @@ export default function RacingPage() {
               <Label className="text-foreground">Left Algorithm</Label>
               <Select
                 value={algorithm1}
-                onValueChange={setAlgorithm1}
+                onValueChange={(value) => setAlgorithm1(value as RacingAlgorithm)}
                 disabled={isRunning}
               >
                 <SelectTrigger className="bg-input/50 border-border/50 text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border/50">
-                  <SelectItem value="bubble">Bubble Sort</SelectItem>
-                  <SelectItem value="quick">Quick Sort</SelectItem>
-                  <SelectItem value="merge">Merge Sort</SelectItem>
+                  {RACING_ALGORITHM_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -234,16 +258,18 @@ export default function RacingPage() {
               <Label className="text-foreground">Right Algorithm</Label>
               <Select
                 value={algorithm2}
-                onValueChange={setAlgorithm2}
+                onValueChange={(value) => setAlgorithm2(value as RacingAlgorithm)}
                 disabled={isRunning}
               >
                 <SelectTrigger className="bg-input/50 border-border/50 text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border/50">
-                  <SelectItem value="bubble">Bubble Sort</SelectItem>
-                  <SelectItem value="quick">Quick Sort</SelectItem>
-                  <SelectItem value="merge">Merge Sort</SelectItem>
+                  {RACING_ALGORITHM_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
